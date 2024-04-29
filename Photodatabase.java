@@ -1,11 +1,16 @@
 import java.sql.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.sql.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
-public class Photodatabase{
-
+public class PhotoDatabase {
    // Create a connection to a SQLite in-memory database
    // Returns Connection object
    public static Connection createConnection() {
-       Connection conn = null;
+       Connection conn= null;
        try {
            conn = DriverManager.getConnection("jdbc:sqlite::memory:");
        } catch (SQLException e) {
@@ -201,6 +206,112 @@ public class Photodatabase{
        }
    }
 
+   // GUI
+   public class PhotoApp extends JFrame{
+        private JTextField usernameField;
+        private JPasswordField passwordField;
+        private JButton createAccountButton;
+        private JButton loginButton;
+        private JButton uploadPictureButton;
+        private int loggedInUserId = -1;
+        public PhotoApp() {
+
+            // Set Up GUI components
+            setTitle("Photo App");
+            setDefaultCloseOperation(EXIT_ON_CLOSE);
+            setSize(400, 300);
+            setLayout(new BorderLayout());
+
+            JPanel inputPanel = new JPanel(new GridLayout(4, 2));
+            inputPanel.add(new JLabel("Username:"));
+            usernameField = new JTextField();
+            inputPanel.add(usernameField);
+
+            // Password input
+            inputPanel.add(new JLabel("Password:"));
+            passwordField = new JPasswordField();
+            inputPanel.add(passwordField);
+
+            // Create account button
+            createAccountButton = new JButton("Create Account");
+            createAccountButton.addActionListener(new CreateAccountActionListener());
+            inputPanel.add(createAccountButton);
+
+            // Login button
+            loginButton = new JButton("Log In");
+            loginButton.addActionListener(new LoginActionListener());
+            inputPanel.add(loginButton);
+
+            // Upload picture button
+            uploadPictureButton = new JButton("Upload Picture");
+            uploadPictureButton.addActionListener(new UploadPictureActionListener());
+            uploadPictureButton.setEnabled(false); // Disabled until logged in
+            inputPanel.add(uploadPictureButton);
+
+            // Status label
+            statusLabel = new JLabel("Please log in or create an account.");
+            inputPanel.add(statusLabel);
+
+            add(inputPanel, BorderLayout.CENTER);
+
+            setVisible(true); 
+        }
+        private class CreateAccountActionListener implements ActionListener {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String username = usernameField.getText();
+                String password = new String(passwordField.getPassword());
+    
+                if (username.isEmpty() || password.isEmpty()) {
+                    JOptionPane.showMessageDialog(PhotoApp.this, "Username and password are required.");
+                    return;
+                }
+    
+                try {
+                    PreparedStatement stmt = connection.prepareStatement(
+                        "INSERT INTO users (username, password) VALUES (?, ?)");
+                    stmt.setString(1, username);
+                    stmt.setString(2, password);
+                    stmt.executeUpdate();
+                    JOptionPane.showMessageDialog(PhotoApp.this, "Account created successfully.");
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PhotoApp.this, "Error creating account. Username might be taken.");
+                }
+            }
+        }
+        private class ViewPicturesActionListener implements ActionListener {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    PreparedStatement stmt = connection.prepareStatement(
+                        "SELECT picture FROM photos WHERE user_id = ?");
+                    stmt.setInt(1, loggedInUserId);
+                    ResultSet rs = stmt.executeQuery();
+    
+                    JPanel picturePanel = new JPanel(new GridLayout(0, 3)); // Display in a grid
+    
+                    while (rs.next()) {
+                        byte[] pictureData = rs.getBytes("picture");
+                        ImageIcon imageIcon = new ImageIcon(pictureData);
+                        JLabel pictureLabel = new JLabel(imageIcon);
+                        picturePanel.add(pictureLabel);
+                    }
+    
+                    JFrame pictureFrame = new JFrame("My Pictures");
+                    pictureFrame.add(new JScrollPane(picturePanel));
+                    pictureFrame.setSize(600, 400);
+                    pictureFrame.setVisible(true);
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(PhotoApp.this, "Error retrieving pictures.");
+                }
+            }
+        }
+
+    } 
+   
+
    // DO NOT MODIFY main
    public static void main(String[] args) {
        // Create connection to SQLite in-memory database
@@ -222,5 +333,6 @@ public class Photodatabase{
        selectAllUsersTable(conn);
        selectAllAlbumsTable(conn);
        selectAllPermissionsTable(conn);
+       new PhotoApp();
    }
 }
