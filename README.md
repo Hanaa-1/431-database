@@ -26,7 +26,7 @@ To upload a picture, you enter the characteristics of said picture.
 When the UI is launched, it will connect to the database and begin running. 
 Authors
 Precious Akinnodi
-Hanaa Salim 😛
+Hanaa Salim 
 Alexis Osueke
 Nicole Balay
 
