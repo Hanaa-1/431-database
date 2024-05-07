@@ -9,49 +9,68 @@ import java.sql.Timestamp;
 import java.sql.Date;
 
 public class PhotoDatabase {
-    // Create a connection to a SQLite in-memory database
+    // MySQL database connection details
+    private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/photo_app";
+    private static final String USERNAME = "your_username";
+    private static final String PASSWORD = "your_password";
+
+    // Create a connection to the MySQL database
     public static Connection createConnection() {
         Connection conn = null;
         try {
-            conn = DriverManager.getConnection("jdbc:sqlite::memory:");
+            // Load the MySQL JDBC driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
+
+            // Establish a connection
+            conn = DriverManager.getConnection(DATABASE_URL, USERNAME, PASSWORD);
+            System.out.println("Connection to MySQL database established successfully!");
+        } catch (ClassNotFoundException e) {
+            System.out.println("MySQL JDBC Driver not found.");
+            e.printStackTrace();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Failed to establish connection to MySQL database.");
+            e.printStackTrace();
         }
         return conn;
     }
 
-    // Create tables
+    // Create tables if they don't exist
     public static void createTables(Connection conn) {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("CREATE TABLE PhotosTable (" +
+            // Create PhotosTable
+            stmt.execute("CREATE TABLE IF NOT EXISTS PhotosTable (" +
                          "FileName VARCHAR(50), " +
                          "AlbumName VARCHAR(50), " +
                          "DateTaken DATETIME, " +
                          "FileType VARCHAR(4), " +
                          "UploadUserID VARCHAR(20))");
 
-            stmt.execute("CREATE TABLE TagsTable (" +
+            // Create TagsTable
+            stmt.execute("CREATE TABLE IF NOT EXISTS TagsTable (" +
                          "FileName VARCHAR(50), " +
                          "Tag VARCHAR(20), " +
                          "TimeTagAdded DATETIME)");
 
-            stmt.execute("CREATE TABLE UsersTable (" +
+            // Create UsersTable
+            stmt.execute("CREATE TABLE IF NOT EXISTS UsersTable (" +
                          "UserID VARCHAR(20), " +
                          "JoinedSince DATETIME)");
 
-            stmt.execute("CREATE TABLE AlbumsTable (" +
+            // Create AlbumsTable
+            stmt.execute("CREATE TABLE IF NOT EXISTS AlbumsTable (" +
                          "AlbumName VARCHAR(50), " +
                          "CreatorUserID VARCHAR(20), " +
                          "CreationDate DATE)");
 
-            stmt.execute("CREATE TABLE PermissionsTable (" +
+            // Create PermissionsTable
+            stmt.execute("CREATE TABLE IF NOT EXISTS PermissionsTable (" +
                          "AccessUserID VARCHAR(20), " +
                          "OwnerUserID VARCHAR(20), " +
                          "PermissionAdded DATETIME, " +
                          "AlbumName VARCHAR(50), " +
                          "FileName VARCHAR(50))");
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error creating tables: " + e.getMessage());
         }
     }
 
@@ -66,7 +85,7 @@ public class PhotoDatabase {
             pstmt.setString(5, uploadUserID);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error inserting into PhotosTable: " + e.getMessage());
         }
     }
 
@@ -79,7 +98,7 @@ public class PhotoDatabase {
             pstmt.setTimestamp(3, timeTagAdded);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error inserting into TagsTable: " + e.getMessage());
         }
     }
 
@@ -91,7 +110,7 @@ public class PhotoDatabase {
             pstmt.setTimestamp(2, joinedSince);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error inserting into UsersTable: " + e.getMessage());
         }
     }
 
@@ -104,7 +123,7 @@ public class PhotoDatabase {
             pstmt.setDate(3, creationDate);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error inserting into AlbumsTable: " + e.getMessage());
         }
     }
 
@@ -119,11 +138,11 @@ public class PhotoDatabase {
             pstmt.setString(5, fileName);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error inserting into PermissionsTable: " + e.getMessage());
         }
     }
 
-    // Select and print all rows from tables
+    // Select and print data from tables
     public static void selectAllPhotosTable(Connection conn) {
         String sql = "SELECT * FROM PhotosTable";
         try (Statement stmt = conn.createStatement()) {
@@ -138,7 +157,7 @@ public class PhotoDatabase {
                     ")");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error retrieving data from PhotosTable: " + e.getMessage());
         }
     }
 
@@ -154,7 +173,7 @@ public class PhotoDatabase {
                     ")");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error retrieving data from TagsTable: " + e.getMessage());
         }
     }
 
@@ -169,7 +188,7 @@ public class PhotoDatabase {
                     ")");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error retrieving data from UsersTable: " + e.getMessage());
         }
     }
 
@@ -185,7 +204,7 @@ public class PhotoDatabase {
                     ")");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error retrieving data from AlbumsTable: " + e.getMessage());
         }
     }
 
@@ -203,33 +222,7 @@ public class PhotoDatabase {
                     ")");
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.out.println("Error retrieving data from PermissionsTable: " + e.getMessage());
         }
-    }
-
-    // DO NOT MODIFY main
-    public static void main(String[] args) {
-        // Create connection to SQLite in-memory database
-        Connection conn = createConnection();
-
-        // Create tables
-        createTables(conn);
-
-        // Insert sample data into tables
-        insertPhotosTable(conn, "photo1.jpg", "Album1", new Timestamp(System.currentTimeMillis()), "jpg", "user1");
-        insertTagsTable(conn, "photo1.jpg", "nature", new Timestamp(System.currentTimeMillis()));
-        insertUsersTable(conn, "user1", new Timestamp(System.currentTimeMillis()));
-        insertAlbumsTable(conn, "Album1", "user1", new Date(System.currentTimeMillis()));
-        insertPermissionsTable(conn, "user2", "user1", new Timestamp(System.currentTimeMillis()), "Album1", "photo1.jpg");
-
-        // Select and print all rows from each table
-        selectAllPhotosTable(conn);
-        selectAllTagsTable(conn);
-        selectAllUsersTable(conn);
-        selectAllAlbumsTable(conn);
-        selectAllPermissionsTable(conn);
-
-        // Start the PhotoApp GUI
-        PhotoApp.main(args);
     }
 }
