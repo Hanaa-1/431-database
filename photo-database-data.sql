@@ -1,7 +1,7 @@
-INSERT INTO Users (UserID, JoinedSince)
-VALUES ("Bobby98", "2012-12-18 09:46:00"),
-	("Carolz", "2013-01-12 09:32:00"),
-    ("JimmyJim24", "2013-02-01 10:56:00");
+INSERT INTO Users (UserID, JoinedSince, Password)
+VALUES ("Bobby98", "2012-12-18 09:46:00", "Cats"),
+	("Carolz", "2013-01-12 09:32:00", "Password123"),
+    ("JimmyJim24", "2013-02-01 10:56:00", "BobbyBob");
 
 INSERT INTO Photos (Filename, Filetype, DateTaken, UploaderUserID, AlbumName)
 VALUES ("bob_and_jim_fishing", "jpg", "2018-06-28 11:23:00", "Bobby98", NULL),
