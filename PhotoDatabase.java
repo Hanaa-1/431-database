@@ -1,228 +1,158 @@
-// Path: /mnt/data/PhotoDatabase.java
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PhotoDatabase {
-    // MySQL database connection details
     private static final String DATABASE_URL = "jdbc:mysql://localhost:3306/photo_app";
-    private static final String USERNAME = "your_username";
-    private static final String PASSWORD = "your_password";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "root";
 
-    // Create a connection to the MySQL database
+    // Create a connection to the database
     public static Connection createConnection() {
-        Connection conn = null;
         try {
-            // Load the MySQL JDBC driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
-
-            // Establish a connection
-            conn = DriverManager.getConnection(DATABASE_URL, USERNAME, PASSWORD);
-            System.out.println("Connection to MySQL database established successfully!");
-        } catch (ClassNotFoundException e) {
-            System.out.println("MySQL JDBC Driver not found.");
+            return DriverManager.getConnection(DATABASE_URL, DB_USER, DB_PASSWORD);
+        } catch (SQLException e) {
+            System.err.println("Failed to create a connection to the database.");
             e.printStackTrace();
+            return null;
+        }
+    }
+
+    // Check login credentials
+    public static boolean checkLogin(String userId, String password) {
+        String query = "SELECT Password FROM Users WHERE UserID = ?";
+        try (Connection conn = createConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                String retrievedPassword = rs.getString("Password");
+                return retrievedPassword.equals(password);
+            }
+            return false;
         } catch (SQLException e) {
-            System.out.println("Failed to establish connection to MySQL database.");
+            System.err.println("Error checking login credentials: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Fetch the list of albums for a user
+    public static List<String> fetchAlbums(String userId) {
+        List<String> albums = new ArrayList<>();
+        String query = "SELECT AlbumName FROM Albums WHERE CreatorUserID = ?";
+        try (Connection conn = createConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                albums.add(rs.getString("AlbumName"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching albums: " + e.getMessage());
             e.printStackTrace();
         }
-        return conn;
+        return albums;
     }
 
-    // Create tables if they don't exist
-    public static void createTables(Connection conn) {
-        try (Statement stmt = conn.createStatement()) {
-            // Create PhotosTable
-            stmt.execute("CREATE TABLE IF NOT EXISTS PhotosTable (" +
-                         "FileName VARCHAR(50), " +
-                         "AlbumName VARCHAR(50), " +
-                         "DateTaken DATETIME, " +
-                         "FileType VARCHAR(4), " +
-                         "UploadUserID VARCHAR(20))");
-
-            // Create TagsTable
-            stmt.execute("CREATE TABLE IF NOT EXISTS TagsTable (" +
-                         "FileName VARCHAR(50), " +
-                         "Tag VARCHAR(20), " +
-                         "TimeTagAdded DATETIME)");
-
-            // Create UsersTable
-            stmt.execute("CREATE TABLE IF NOT EXISTS UsersTable (" +
-                         "UserID VARCHAR(20), " +
-                         "JoinedSince DATETIME)");
-
-            // Create AlbumsTable
-            stmt.execute("CREATE TABLE IF NOT EXISTS AlbumsTable (" +
-                         "AlbumName VARCHAR(50), " +
-                         "CreatorUserID VARCHAR(20), " +
-                         "CreationDate DATE)");
-
-            // Create PermissionsTable
-            stmt.execute("CREATE TABLE IF NOT EXISTS PermissionsTable (" +
-                         "AccessUserID VARCHAR(20), " +
-                         "OwnerUserID VARCHAR(20), " +
-                         "PermissionAdded DATETIME, " +
-                         "AlbumName VARCHAR(50), " +
-                         "FileName VARCHAR(50))");
-        } catch (SQLException e) {
-            System.out.println("Error creating tables: " + e.getMessage());
-        }
-    }
-
-    // Insert data into PhotosTable
-    public static void insertPhotosTable(Connection conn, String fileName, String albumName, Timestamp dateTaken, String fileType, String uploadUserID) {
-        String sql = "INSERT INTO PhotosTable (FileName, AlbumName, DateTaken, FileType, UploadUserID) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, fileName);
-            pstmt.setString(2, albumName);
-            pstmt.setTimestamp(3, dateTaken);
-            pstmt.setString(4, fileType);
-            pstmt.setString(5, uploadUserID);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error inserting into PhotosTable: " + e.getMessage());
-        }
-    }
-
-    // Insert data into TagsTable
-    public static void insertTagsTable(Connection conn, String fileName, String tag, Timestamp timeTagAdded) {
-        String sql = "INSERT INTO TagsTable (FileName, Tag, TimeTagAdded) VALUES (?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, fileName);
-            pstmt.setString(2, tag);
-            pstmt.setTimestamp(3, timeTagAdded);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error inserting into TagsTable: " + e.getMessage());
-        }
-    }
-
-    // Insert data into UsersTable
-    public static void insertUsersTable(Connection conn, String userID, Timestamp joinedSince) {
-        String sql = "INSERT INTO UsersTable (UserID, JoinedSince) VALUES (?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, userID);
-            pstmt.setTimestamp(2, joinedSince);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error inserting into UsersTable: " + e.getMessage());
-        }
-    }
-
-    // Insert data into AlbumsTable
-    public static void insertAlbumsTable(Connection conn, String albumName, String creatorUserID, Date creationDate) {
-        String sql = "INSERT INTO AlbumsTable (AlbumName, CreatorUserID, CreationDate) VALUES (?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+    // Create a new album
+    public static boolean createAlbum(String userId, String albumName) {
+        String query = "INSERT INTO Albums (AlbumName, CreatorUserID, CreationDate) VALUES (?, ?, NOW())";
+        try (Connection conn = createConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, albumName);
-            pstmt.setString(2, creatorUserID);
-            pstmt.setDate(3, creationDate);
-            pstmt.executeUpdate();
+            pstmt.setString(2, userId);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
         } catch (SQLException e) {
-            System.out.println("Error inserting into AlbumsTable: " + e.getMessage());
+            System.err.println("Error creating album: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
-    // Insert data into PermissionsTable
-    public static void insertPermissionsTable(Connection conn, String accessUserID, String ownerUserID, Timestamp permissionAdded, String albumName, String fileName) {
-        String sql = "INSERT INTO PermissionsTable (AccessUserID, OwnerUserID, PermissionAdded, AlbumName, FileName) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, accessUserID);
-            pstmt.setString(2, ownerUserID);
-            pstmt.setTimestamp(3, permissionAdded);
-            pstmt.setString(4, albumName);
-            pstmt.setString(5, fileName);
-            pstmt.executeUpdate();
+// Fetch photo details for a specific album
+public static List<String[]> fetchPhotoDetails(String albumName) {
+    List<String[]> details = new ArrayList<>();
+    String query = "SELECT Filename, DateTaken, Filetype, FilePath " +
+                   "FROM Photos " +
+                   "WHERE AlbumID = (SELECT AlbumID FROM Albums WHERE AlbumName = ?)";
+    try (Connection conn = createConnection();
+         PreparedStatement pstmt = conn.prepareStatement(query)) {
+        pstmt.setString(1, albumName);
+        ResultSet rs = pstmt.executeQuery();
+        while (rs.next()) {
+            String[] row = {
+                rs.getString("Filename"),
+                rs.getString("DateTaken"),
+                rs.getString("Filetype"),
+                rs.getString("FilePath"),
+                "" // Empty string for Tags (not retrieved in this query)
+            };
+            details.add(row);
+        }
+    } catch (SQLException e) {
+        System.err.println("Error fetching photo details: " + e.getMessage());
+        e.printStackTrace();
+    }
+    return details;
+}
+
+    // Add a photo to an album
+    public static boolean addPhoto(String filename, String albumName, String filePath, String userId) {
+        String query = "INSERT INTO Photos (Filename, AlbumID, DateTaken, Filetype, UploaderUserID, FilePath) " +
+                       "VALUES (?, (SELECT AlbumID FROM Albums WHERE AlbumName = ?), NOW(), ?, ?, ?)";
+        try (Connection conn = createConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, filename);
+            pstmt.setString(2, albumName);
+            pstmt.setString(3, getFileType(filePath));
+            pstmt.setString(4, userId);
+            pstmt.setString(5, filePath);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
         } catch (SQLException e) {
-            System.out.println("Error inserting into PermissionsTable: " + e.getMessage());
+            System.err.println("Error adding photo: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 
-    // Select and print data from tables
-    public static void selectAllPhotosTable(Connection conn) {
-        String sql = "SELECT * FROM PhotosTable";
-        try (Statement stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery(sql);
+    // Helper method to get the file type from a file path
+    private static String getFileType(String filePath) {
+        int dotIndex = filePath.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < filePath.length() - 1) {
+            return filePath.substring(dotIndex + 1);
+        }
+        return "";
+    }
+
+    // Test method to print photo details to the console
+    public static void printPhotoDetails(String albumName) {
+        String query = "SELECT p.Filename, p.DateTaken, p.Filetype, p.FilePath, GROUP_CONCAT(t.Tag SEPARATOR ', ') AS Tags " +
+                       "FROM Photos p LEFT JOIN Tags t ON p.PhotoID = t.PhotoID " +
+                       "WHERE p.AlbumID = (SELECT AlbumID FROM Albums WHERE AlbumName = ?) " +
+                       "GROUP BY p.Filename, p.DateTaken, p.Filetype, p.FilePath";
+        try (Connection conn = createConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, albumName);
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
-                System.out.println("(" +
-                    rs.getString("FileName") + ", " +
-                    rs.getString("AlbumName") + ", " +
-                    rs.getTimestamp("DateTaken") + ", " +
-                    rs.getString("FileType") + ", " +
-                    rs.getString("UploadUserID") +
-                    ")");
+                String filename = rs.getString("Filename");
+                String dateTaken = rs.getString("DateTaken");
+                String filetype = rs.getString("Filetype");
+                String filePath = rs.getString("FilePath");
+                String tags = rs.getString("Tags") != null ? rs.getString("Tags") : "No Tags";
+                System.out.println("Filename: " + filename + ", Date Taken: " + dateTaken + ", Filetype: " + filetype +
+                                   ", FilePath: " + filePath + ", Tags: " + tags);
             }
         } catch (SQLException e) {
-            System.out.println("Error retrieving data from PhotosTable: " + e.getMessage());
-        }
-    }
-
-    public static void selectAllTagsTable(Connection conn) {
-        String sql = "SELECT * FROM TagsTable";
-        try (Statement stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                System.out.println("(" +
-                    rs.getString("FileName") + ", " +
-                    rs.getString("Tag") + ", " +
-                    rs.getTimestamp("TimeTagAdded") +
-                    ")");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error retrieving data from TagsTable: " + e.getMessage());
-        }
-    }
-
-    public static void selectAllUsersTable(Connection conn) {
-        String sql = "SELECT * FROM UsersTable";
-        try (Statement stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                System.out.println("(" +
-                    rs.getString("UserID") + ", " +
-                    rs.getTimestamp("JoinedSince") +
-                    ")");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error retrieving data from UsersTable: " + e.getMessage());
-        }
-    }
-
-    public static void selectAllAlbumsTable(Connection conn) {
-        String sql = "SELECT * FROM AlbumsTable";
-        try (Statement stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                System.out.println("(" +
-                    rs.getString("AlbumName") + ", " +
-                    rs.getString("CreatorUserID") + ", " +
-                    rs.getDate("CreationDate") +
-                    ")");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error retrieving data from AlbumsTable: " + e.getMessage());
-        }
-    }
-
-    public static void selectAllPermissionsTable(Connection conn) {
-        String sql = "SELECT * FROM PermissionsTable";
-        try (Statement stmt = conn.createStatement()) {
-            var rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                System.out.println("(" +
-                    rs.getString("AccessUserID") + ", " +
-                    rs.getString("OwnerUserID") + ", " +
-                    rs.getTimestamp("PermissionAdded") + ", " +
-                    rs.getString("AlbumName") + ", " +
-                    rs.getString("FileName") +
-                    ")");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error retrieving data from PermissionsTable: " + e.getMessage());
+            System.err.println("Error fetching photo details: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
